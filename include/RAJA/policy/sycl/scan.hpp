@@ -183,6 +183,7 @@ exclusive_inplace(
         ii++;
     } while (  ii <= iterations);
 
+    // SGS what is going on here, 2 returns?
   if(!Async) { sycl_res.wait(); }
   return camp::resources::EventProxy<camp::resources::Sycl>(sycl_res);
     return inclusive_inplace(sycl_res, exec, begin, end, binary_op);

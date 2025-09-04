@@ -11,6 +11,10 @@ if(RAJA_ENABLE_OPENMP)
   list(APPEND SORT_BACKENDS OpenMP)
 endif()
 
+if(RAJA_ENABLE_SYCL)
+  list(APPEND SORT_BACKENDS OpenMP)
+endif()
+
 if(RAJA_ENABLE_CUDA)
   list(APPEND SORT_BACKENDS Cuda)
 endif()
@@ -83,6 +87,9 @@ if(RAJA_ENABLE_CUDA)
   RAJA_GENERATE_ALGORITHM_UTIL_TESTS( sort Cuda Tiny "Insertion" )
 endif()
 
+
+
+
 if(RAJA_ENABLE_HIP)
   RAJA_GENERATE_ALGORITHM_UTIL_TESTS( sort Hip Small "${HIP_UTIL_SORTS}" )
   RAJA_GENERATE_ALGORITHM_UTIL_TESTS( sort Hip Tiny "Insertion" )
@@ -92,6 +99,7 @@ endif()
 set( UTIL_REDUCES BinaryTree Accumulate )
 
 RAJA_GENERATE_ALGORITHM_UTIL_TESTS( reduce Sequential Default "${UTIL_REDUCES}" )
+
 
 if(RAJA_ENABLE_CUDA)
   RAJA_GENERATE_ALGORITHM_UTIL_TESTS( reduce Cuda Small "${UTIL_REDUCES}" )
