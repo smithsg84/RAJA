@@ -110,6 +110,16 @@ using CudaSortSorters =
 
 #endif
 
+#if defined(RAJA_ENABLE_SYCL)
+
+using SyclSortSorters =
+  camp::list<
+              PolicySort<RAJA::sycl_exec<128>>,
+              PolicySortPairs<RAJA::sycl_exec<128>>
+            >;
+
+#endif
+
 #if defined(RAJA_ENABLE_HIP)
 
 using HipSortSorters =

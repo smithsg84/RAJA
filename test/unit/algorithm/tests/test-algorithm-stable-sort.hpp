@@ -99,6 +99,17 @@ using OpenMPStableSortSorters =
 
 #endif
 
+#if defined(RAJA_ENABLE_SYCL)
+
+// SGS policies for SYCL?
+using SyclStableSortSorters =
+  camp::list<
+              PolicyStableSort<RAJA::sycl_exec<128>>,
+              PolicyStableSortPairs<RAJA::sycl_exec<128>>
+            >;
+
+#endif
+
 #if defined(RAJA_ENABLE_CUDA)
 
 using CudaStableSortSorters =
