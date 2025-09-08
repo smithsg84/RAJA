@@ -97,6 +97,9 @@ inline void sort_parallel_region(Sorter sorter,
 /*!
         \brief sort given range using sorter and comparison function
 */
+
+//#define HAVE_ONEAPI_DPL
+#ifdef HAVE_ONEAPI_DPL
 template<typename Sorter, typename Iter, typename Compare>
 inline void sort(resources::Sycl sycl_res, Sorter sorter, Iter begin, Iter end, Compare comp)
 {
@@ -126,22 +129,87 @@ inline void sort(resources::Sycl sycl_res, Sorter sorter, Iter begin, Iter end, 
     // Sort the data using sycl::sort
     //::sycl::ext::oneapi::experimental::parallel_stl::sort(sycl_policy, begin, end);
     oneapi::dpl::sort(policy, begin, end, comp);
-
-#if 0
-
-    const diff_type max_threads = omp_get_max_threads();
-
-    const diff_type requested_num_threads = std::min(
-        (n + min_iterates_per_task - 1) / min_iterates_per_task, max_threads);
-    RAJA_UNUSED_VAR(requested_num_threads);  // avoid warning in hip device code
-
-#pragma omp parallel num_threads(static_cast <int>(requested_num_threads))
-    {
-      sort_parallel_region(sorter, begin, n, comp);
-    }
-#endif
   }
 }
+#else
+
+template<typename Sorter, typename Iter, typename Compare>
+inline void sort(resources::Sycl sycl_res, Sorter sorter, Iter begin, Iter end, Compare comp)
+{
+  using valueT = typename std::iterator_traits<Iter>::value_type;
+
+  // Calculate the size of the input range
+  size_t n = std::distance(begin, end);
+  
+  if (n <= 1) return;
+
+  ::sycl::queue* sycl_queue = sycl_res.get_queue();
+
+  // This does not work, but works in RAJA sycl scan?  
+  // sycl::buffer<valueT, 1> tempAccBuff(begin, sycl::range<1>(n));
+  
+  // Create buffers for input and output data
+  ::sycl::buffer<valueT, 1> input_buf(begin, end);
+  ::sycl::buffer<valueT, 1> output_buf((::sycl::range<1>(n)));
+        
+  // Pointers to swap between input and output buffers
+  ::sycl::buffer<valueT, 1>* current_buf = &input_buf;
+  ::sycl::buffer<valueT, 1>* next_buf = &output_buf;
+
+  // Bottom-up merge sort
+  for (size_t width = 1; width < n; width *= 2) {
+    size_t num_merges = (n + 2 * width - 1) / (2 * width);
+    
+    sycl_queue -> submit([&](::sycl::handler& h) {
+      ::sycl::accessor current_acc(*current_buf, h, ::sycl::read_only);
+      ::sycl::accessor next_acc(*next_buf, h, ::sycl::write_only);
+
+      h.parallel_for(::sycl::range<1>(num_merges), [=](::sycl::id<1> idx) {
+	size_t merge_idx = idx[0];
+	size_t left_start = merge_idx * 2 * width;
+	size_t left_end = std::min(left_start + width, n);
+	size_t right_start = left_end;
+	size_t right_end = std::min(left_start + 2 * width, n);
+        
+	// Merge two sorted subarrays
+	size_t i = left_start, j = right_start, k = left_start;
+        
+	while (i < left_end && j < right_end) {
+	  if (comp(current_acc[i], current_acc[j])) {
+	    next_acc[k++] = current_acc[i++];
+	  } else {
+	    next_acc[k++] = current_acc[j++];
+	  }
+	}
+        
+	// Copy remaining elements
+	while (i < left_end) {
+	  next_acc[k++] = current_acc[i++];
+	}
+	while (j < right_end) {
+	  next_acc[k++] = current_acc[j++];
+	}
+      });
+    });
+    
+    // Swap buffers for next iteration
+    std::swap(*current_buf, *next_buf);
+  }
+  
+  // Wait for completion
+  sycl_queue -> wait();
+  
+  // Copy result back to original vector
+  ::sycl::host_accessor final_acc(*current_buf);
+  auto it_data = begin;
+  for (size_t i = 0; i < n; ++i) {
+    *it_data = final_acc[i];
+    it_data++;
+  }
+}
+
+#endif
+  
 
 }  // namespace sycl
 
@@ -237,8 +305,31 @@ stable_pairs(resources::Sycl sycl_res,
   auto end      = RAJA::zip(keys_end, vals_begin + (keys_end - keys_begin));
   using zip_ref = RAJA::detail::IterRef<camp::decay<decltype(begin)>>;
 
-#if 0
-  // SGS sycl not happy
+
+
+
+#ifdef LIKELY_NEED_THIS
+// SGS sycl not happy, does not think the RAJA zip is device copyable
+//
+
+zip_tuple<true, double, long>
+  
+#include <sycl/sycl.hpp>
+
+struct MyData {
+    int a;
+    float b;
+};
+
+namespace sycl {
+template <>
+struct is_device_copyable<MyData> : std::true_type {};
+}
+
+#endif
+
+
+#if 0 
   detail::sycl::sort(sycl_res, detail::StableSorter {}, begin, end,
                        RAJA::compare_first<zip_ref>(comp));
 #endif
