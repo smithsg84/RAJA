@@ -112,10 +112,12 @@ using CudaSortSorters =
 
 #if defined(RAJA_ENABLE_SYCL)
 
-// SGS FIXME PolicySortPairs<RAJA::sycl_exec<128>>
+// SGS hacking
+//              
 using SyclSortSorters =
   camp::list<
-              PolicySort<RAJA::sycl_exec<128>>
+              PolicySort<RAJA::sycl_exec<128>>,
+              PolicySortPairs<RAJA::sycl_exec<128>>
             >;
 
 #endif

@@ -673,6 +673,7 @@ TYPED_TEST_P(SortUnitTest, UnitSort)
 REGISTER_TYPED_TEST_SUITE_P(SortUnitTest, UnitSort);
 
 
+// SGS test types for sort defined here
 //
 // Key types for sort tests
 //

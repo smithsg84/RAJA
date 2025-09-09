@@ -18,11 +18,70 @@
 #ifndef RAJA_sort_sycl_HPP
 #define RAJA_sort_sycl_HPP
 
+#include "RAJA/config.hpp"
+
 #include <algorithm>
+#include <utility>
+
+#include "RAJA/util/zip.hpp"
+
+#include "RAJA/util/macros.hpp"
+
+#include "RAJA/util/concepts.hpp"
+
+#include "RAJA/policy/openmp/policy.hpp"
+#include "RAJA/policy/sequential/sort.hpp"
+#include "RAJA/pattern/detail/algorithm.hpp"
+
+
+//#define HAVE_ONEAPI_DPL
+#ifdef HAVE_ONEAPI_DPL
 #include <oneapi/dpl/algorithm>
 #include <oneapi/dpl/execution>
+#endif
 
 #if defined(RAJA_ENABLE_SYCL)
+
+#ifdef LIKELY_NEED_THIS
+// SGS sycl not happy, does not think the RAJA zip is device copyable
+//
+
+zip_tuple<true, double, long>
+  
+#include <sycl/sycl.hpp>
+
+struct MyData {
+    int a;
+    float b;
+};
+
+namespace sycl {
+template <>
+struct is_device_copyable<MyData> : std::true_type {};
+}
+
+#endif
+
+// SGS hacking
+namespace sycl {
+template <>
+struct is_device_copyable<RAJA::zip_tuple<true, double, long>> : std::true_type {};
+  
+template <>
+struct is_device_copyable<RAJA::zip_tuple<false, double, long>> : std::true_type {};
+
+template <>
+struct is_device_copyable<RAJA::zip_tuple<true, long, long>> : std::true_type {};
+
+template <>
+struct is_device_copyable<RAJA::zip_tuple<false, long, long>> : std::true_type {};
+
+template <>
+struct is_device_copyable<RAJA::zip_tuple<false, int, long>> : std::true_type {};
+  
+template <>
+struct is_device_copyable<RAJA::zip_tuple<true, int, long>> : std::true_type {};
+}
 
 namespace RAJA
 {
@@ -125,9 +184,7 @@ inline void sort(resources::Sycl sycl_res, Sorter sorter, Iter begin, Iter end, 
 
     auto policy = oneapi::dpl::execution::make_device_policy(*sycl_queue);
 
-    // SGS comp
-    // Sort the data using sycl::sort
-    //::sycl::ext::oneapi::experimental::parallel_stl::sort(sycl_policy, begin, end);
+    // Sort the data using oneAPI DPL library sort
     oneapi::dpl::sort(policy, begin, end, comp);
   }
 }
@@ -161,7 +218,12 @@ inline void sort(resources::Sycl sycl_res, Sorter sorter, Iter begin, Iter end, 
     size_t num_merges = (n + 2 * width - 1) / (2 * width);
     
     sycl_queue -> submit([&](::sycl::handler& h) {
-      ::sycl::accessor current_acc(*current_buf, h, ::sycl::read_only);
+      // SGS current_acc should be read_only, this causes a problem with the compare function
+      // since it is being defined on non const T so doing comp(current_acc[i] , current_acc[j])
+      // results in converting const T& to T& which is not allowed.
+      //::sycl::accessor current_acc(*current_buf, h, ::sycl::read_only);
+      // Making read_write makes the current_acc non-const.
+      ::sycl::accessor current_acc(*current_buf, h, ::sycl::read_write);
       ::sycl::accessor next_acc(*next_buf, h, ::sycl::write_only);
 
       h.parallel_for(::sycl::range<1>(num_merges), [=](::sycl::id<1> idx) {
@@ -273,10 +335,8 @@ unstable_pairs(resources::Sycl sycl_res,
   auto end      = RAJA::zip(keys_end, vals_begin + (keys_end - keys_begin));
   using zip_ref = RAJA::detail::IterRef<camp::decay<decltype(begin)>>;
 
-#if 0
   detail::sycl::sort(sycl_res, detail::UnstableSorter {}, begin, end,
-                       RAJA::compare_first<zip_ref>(comp));
-#endif
+		     RAJA::compare_first<zip_ref>(comp));
 
   return camp::resources::EventProxy<camp::resources::Sycl>(sycl_res);  
 }
@@ -305,34 +365,8 @@ stable_pairs(resources::Sycl sycl_res,
   auto end      = RAJA::zip(keys_end, vals_begin + (keys_end - keys_begin));
   using zip_ref = RAJA::detail::IterRef<camp::decay<decltype(begin)>>;
 
-
-
-
-#ifdef LIKELY_NEED_THIS
-// SGS sycl not happy, does not think the RAJA zip is device copyable
-//
-
-zip_tuple<true, double, long>
-  
-#include <sycl/sycl.hpp>
-
-struct MyData {
-    int a;
-    float b;
-};
-
-namespace sycl {
-template <>
-struct is_device_copyable<MyData> : std::true_type {};
-}
-
-#endif
-
-
-#if 0 
   detail::sycl::sort(sycl_res, detail::StableSorter {}, begin, end,
-                       RAJA::compare_first<zip_ref>(comp));
-#endif
+		     ::RAJA::compare_first<zip_ref>(comp));
   
   return camp::resources::EventProxy<camp::resources::Sycl>(sycl_res);
 }
