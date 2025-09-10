@@ -197,7 +197,7 @@ inline void sort(resources::Sycl sycl_res, Sorter sorter, Iter begin, Iter end, 
 
   // Calculate the size of the input range
   size_t n = std::distance(begin, end);
-  
+
   if (n <= 1) return;
 
   ::sycl::queue* sycl_queue = sycl_res.get_queue();
@@ -237,7 +237,9 @@ inline void sort(resources::Sycl sycl_res, Sorter sorter, Iter begin, Iter end, 
 	size_t i = left_start, j = right_start, k = left_start;
         
 	while (i < left_end && j < right_end) {
-	  if (comp(current_acc[i], current_acc[j])) {
+	  // For stability: when elements are equal, prefer left array
+	  //if (comp(current_acc[i], current_acc[j])) {
+	  if (!comp(current_acc[j], current_acc[i])) {
 	    next_acc[k++] = current_acc[i++];
 	  } else {
 	    next_acc[k++] = current_acc[j++];
@@ -366,7 +368,7 @@ stable_pairs(resources::Sycl sycl_res,
   using zip_ref = RAJA::detail::IterRef<camp::decay<decltype(begin)>>;
 
   detail::sycl::sort(sycl_res, detail::StableSorter {}, begin, end,
-		     ::RAJA::compare_first<zip_ref>(comp));
+		     RAJA::compare_first<zip_ref>(comp));
   
   return camp::resources::EventProxy<camp::resources::Sycl>(sycl_res);
 }
