@@ -29,7 +29,6 @@
 
 #include "RAJA/util/concepts.hpp"
 
-#include "RAJA/policy/openmp/policy.hpp"
 #include "RAJA/policy/sequential/sort.hpp"
 #include "RAJA/pattern/detail/algorithm.hpp"
 
@@ -58,6 +57,22 @@ struct MyData {
 namespace sycl {
 template <>
 struct is_device_copyable<MyData> : std::true_type {};
+}
+
+template<typename T>
+std::enable_if_t<std::is_arithmetic_v<T>, void>
+instantiate_helper() {
+    MyContainer<T> instance;
+
+
+template<typename T, typename U>
+class Calculator<T, U, 
+    std::enable_if_t<std::is_arithmetic_v<T> && std::is_arithmetic_v<U>>> {
+public:
+    auto add(T a, U b) -> decltype(a + b) {
+        return a + b;
+    }
+};
 }
 
 #endif
