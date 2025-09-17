@@ -205,6 +205,10 @@ inline void sort(resources::Sycl sycl_res, Sorter sorter, Iter begin, Iter end, 
 }
 #else
 
+// TODO
+// RAJAfy, use sorter and other RAJA helpers?
+// Short circuit small sort, min_iterates_per_task?
+// Specialize for cases where container is contiguous?  std::vector?  Will this avoid 2 copies and extra allocation?
 template<typename Sorter, typename Iter, typename Compare>
 inline void sort(resources::Sycl sycl_res, Sorter sorter, Iter begin, Iter end, Compare comp)
 {
@@ -277,8 +281,13 @@ inline void sort(resources::Sycl sycl_res, Sorter sorter, Iter begin, Iter end, 
   
   // Wait for completion
   sycl_queue -> wait();
-  
-  // Copy result back to original vector
+
+  // Copy result back to original vector; this is required since Sycl does not implicitly copy
+  // data back to the host when current_buf is destructed (as is the case if a buffer is defined
+  // using a data pointer.
+
+  // An optimization would be to specialize for the case if data structure was a std::vector.
+  // Could avoid copies in current_buf initialization and this copy back.
   ::sycl::host_accessor final_acc(*current_buf);
   auto it_data = begin;
   for (size_t i = 0; i < n; ++i) {
@@ -287,9 +296,8 @@ inline void sort(resources::Sycl sycl_res, Sorter sorter, Iter begin, Iter end, 
   }
 }
 
-#endif
+#endif // closing endif for RAJA_sort_sycl_HPP guard
   
-
 }  // namespace sycl
 
 }  // namespace detail
