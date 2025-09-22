@@ -77,25 +77,13 @@ public:
 
 #endif
 
-// SGS hacking
+// SGS Where should something like this go in RAJA?  possibly zip_tuple.hpp but should device specific stuff go there?
 namespace sycl {
-template <>
-struct is_device_copyable<RAJA::zip_tuple<true, double, long>> : std::true_type {};
+
+template <typename... Ts>
+struct is_device_copyable<RAJA::zip_tuple<true, Ts...>> 
+    : std::conjunction<std::is_arithmetic<Ts>...> {};
   
-template <>
-struct is_device_copyable<RAJA::zip_tuple<false, double, long>> : std::true_type {};
-
-template <>
-struct is_device_copyable<RAJA::zip_tuple<true, long, long>> : std::true_type {};
-
-template <>
-struct is_device_copyable<RAJA::zip_tuple<false, long, long>> : std::true_type {};
-
-template <>
-struct is_device_copyable<RAJA::zip_tuple<false, int, long>> : std::true_type {};
-  
-template <>
-struct is_device_copyable<RAJA::zip_tuple<true, int, long>> : std::true_type {};
 }
 
 namespace RAJA
