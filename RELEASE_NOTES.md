@@ -6,6 +6,7 @@
 [comment]: # (# SPDX-License-Identifier: BSD-3-Clause)
 [comment]: # (#################################################################)
 
+
 Version YYYY.MM.PP -- Release date 20yy-mm-dd
 ============================================
 
@@ -18,7 +19,11 @@ Notable changes include:
   * Build changes/improvements:
 
   * Bug fixes/improvements:
+  
+Version 2025.13.0 -- Release date Pending
+============================================
 
+   * Ensure RELEASE_NOTES.md file is updated on PR.
 
 Version 2025.12.0 -- Release date 2025-12-19
 ============================================
