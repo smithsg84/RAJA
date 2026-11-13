@@ -82,11 +82,6 @@ jobs:
           nvcc --version
           Write-Host "CUDA_PATH=$env:CUDA_PATH"
 
-          $generators = cmake --help
-          if (-not ($generators | Select-String "Visual Studio 18 2026")) {
-            throw "Visual Studio 2026 CMake generator not found"
-          }
-
           if (-not (Test-Path "$env:CUDA_PATH\bin\nvcc.exe")) {
             throw "CUDA compiler not found"
           }
@@ -95,14 +90,9 @@ jobs:
         shell: pwsh
         run: |
           cmake -S . -B build `
-            -G "Visual Studio 18 2026" -A x64 `
-            -DCMAKE_CUDA_ARCHITECTURES=80 `
-            -DBLT_CXX_STD=c++20 `
-            -DCMAKE_CXX_STANDARD=20 `
+            -DCMAKE_CUDA_ARCHITECTURES=75 `
             -DENABLE_CUDA=On `
-            -DENABLE_OPENMP=Off `
-            -DENABLE_WARNINGS_AS_ERRORS=Off `
-            -DBUILD_SHARED_LIBS=Off
+            -DCMAKE_CUDA_FLAGS="-Xcompiler=/Zc:preprocessor,/bigobj"
 
       - name: Build RAJA
         shell: pwsh
