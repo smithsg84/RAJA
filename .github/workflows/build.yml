@@ -82,6 +82,9 @@ jobs:
           nvcc --version
           Write-Host "CUDA_PATH=$env:CUDA_PATH"
 
+	  dir $env:CUDA_PATH\include\host*
+	  dir $env:CUDA_PATH\include\crt\*
+
           if (-not (Test-Path "$env:CUDA_PATH\bin\nvcc.exe")) {
             throw "CUDA compiler not found"
           }
